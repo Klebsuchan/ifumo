@@ -132,13 +132,6 @@ const CATEGORY_CIRCLES: Array<{
   },
 ];
 
-const QUICK_ADDRESSES = [
-  { label: 'Av. Paulista, 1000', lat: -23.5649, lng: -46.652 },
-  { label: 'Rua Augusta, 1500', lat: -23.5582, lng: -46.6601 },
-  { label: 'Al. Lorena, 1420', lat: -23.5614, lng: -46.6658 },
-  { label: 'Av. Faria Lima, 3477', lat: -23.5868, lng: -46.6822 },
-];
-
 function GoogleBadgeIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
@@ -199,13 +192,14 @@ export default function App() {
   const [simulatedOffline, setSimulatedOffline] = useState(false);
   const [addressDropdownOpen, setAddressDropdownOpen] = useState(false);
   const [customAddressInput, setCustomAddressInput] = useState('');
+  const [addressError, setAddressError] = useState('');
   const [isGeocoding, setIsGeocoding] = useState(false);
 
-  // Auth & Saved User Profile State
+  // Auth & Saved User Profile State (Zero mocks — populated via Google Login & user input)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(420);
-  const [userPhone, setUserPhone] = useState<string>('(11) 99876-5432');
+  const [loyaltyPoints, setLoyaltyPoints] = useState<number>(0);
+  const [userPhone, setUserPhone] = useState<string>('');
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
   const [profileSavedFeedback, setProfileSavedFeedback] = useState<string>('');
 
@@ -238,15 +232,10 @@ export default function App() {
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Geolocation State (Default matches image_dc88fa52.png: "Av. Paulista, 1000")
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number }>({
-    lat: -23.5649,
-    lng: -46.652,
-  });
-  const [userAddressLabel, setUserAddressLabel] = useState<string>('Av. Paulista, 1000');
-  const [selectedMapStoreId, setSelectedMapStoreId] = useState<string>(
-    PARTNER_STORES[0]?.id || ''
-  );
+  // Geolocation State (Starts empty until Google profile restores it, user types manually, or marks on map)
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userAddressLabel, setUserAddressLabel] = useState<string>('');
+  const [selectedMapStoreId, setSelectedMapStoreId] = useState<string>('');
 
   // Shopping Cart & Checkout State (Starts empty — only registered products can be added)
   const [cartQuantities, setCartQuantities] = useState<Record<string, number>>(() => {
@@ -267,10 +256,8 @@ export default function App() {
     discountBrl: number;
   } | null>(null);
   const [couponInput, setCouponInput] = useState<string>('');
-  const [checkoutCustomerName, setCheckoutCustomerName] = useState<string>('Lucas Andrade');
-  const [checkoutAddress, setCheckoutAddress] = useState<string>(
-    'Av. Paulista, 1000 - Bela Vista, São Paulo'
-  );
+  const [checkoutCustomerName, setCheckoutCustomerName] = useState<string>('');
+  const [checkoutAddress, setCheckoutAddress] = useState<string>('');
   const [paymentMethod, setPaymentMethod] =
     useState<DeliveryPaymentMethod>('pix_entrega');
   const [changeFor, setChangeFor] = useState<string>('Sem troco');
@@ -327,14 +314,22 @@ export default function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    setAddressDropdownOpen(false);
   }, [activeSection]);
 
-  // Persist & Restore Saved User Profile, Cart & Loyalty Points in LocalStorage
+  // Persist & Restore Saved User Profile & Loyalty Points in LocalStorage (v2 — clean, zero mocks)
   useEffect(() => {
     try {
-      const cachedPts = localStorage.getItem('ifumo_loyalty_pts');
-      if (cachedPts) setLoyaltyPoints(Number(cachedPts));
-      const savedProfileRaw = localStorage.getItem('ifumo_saved_user_profile');
+      // Remove legacy mocked profile keys if present
+      localStorage.removeItem('ifumo_saved_user_profile');
+      localStorage.removeItem('ifumo_loyalty_pts');
+
+      const cachedPts = localStorage.getItem('ifumo_loyalty_pts_v2');
+      if (cachedPts) {
+        const parsedPts = Number(cachedPts);
+        if (!Number.isNaN(parsedPts) && parsedPts >= 0) setLoyaltyPoints(parsedPts);
+      }
+      const savedProfileRaw = localStorage.getItem('ifumo_saved_user_profile_v2');
       if (savedProfileRaw) {
         const parsed = JSON.parse(savedProfileRaw);
         if (parsed.displayName) setCheckoutCustomerName(parsed.displayName);
@@ -343,6 +338,13 @@ export default function App() {
           setCheckoutAddress(parsed.defaultAddress);
         }
         if (parsed.phone) setUserPhone(parsed.phone);
+        if (
+          parsed.coords &&
+          typeof parsed.coords.lat === 'number' &&
+          typeof parsed.coords.lng === 'number'
+        ) {
+          setUserCoords(parsed.coords);
+        }
       }
     } catch {
       // Ignore storage errors
@@ -351,7 +353,7 @@ export default function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('ifumo_loyalty_pts', String(loyaltyPoints));
+      localStorage.setItem('ifumo_loyalty_pts_v2', String(loyaltyPoints));
     } catch {
       // Ignore storage errors
     }
@@ -464,8 +466,8 @@ export default function App() {
         if (Array.isArray(data.notifications) && data.notifications.length > 0) {
           setLiveNotifications(data.notifications);
         }
-        const activeUid = auth.currentUser?.uid || 'demo_user_1';
-        if (data.users && data.users[activeUid]) {
+        const activeUid = auth.currentUser?.uid;
+        if (activeUid && data.users && data.users[activeUid]) {
           const saved = data.users[activeUid];
           if (saved.displayName) setCheckoutCustomerName(saved.displayName);
           if (saved.defaultAddress) {
@@ -682,10 +684,10 @@ export default function App() {
           const existingSnap = await getDoc(userRef);
           if (existingSnap.exists()) {
             const data = existingSnap.data();
-            const restoredName = data.displayName || user.displayName || 'Cliente Ifumo';
-            const restoredAddr = data.defaultAddress || userAddressLabel || 'Av. Paulista, 1000';
-            const restoredPhone = data.phone || userPhone || '(11) 99876-5432';
-            const restoredPts = typeof data.loyaltyPoints === 'number' ? data.loyaltyPoints : loyaltyPoints;
+            const restoredName = data.displayName || user.displayName || '';
+            const restoredAddr = data.defaultAddress || userAddressLabel || '';
+            const restoredPhone = data.phone || userPhone || '';
+            const restoredPts = typeof data.loyaltyPoints === 'number' ? data.loyaltyPoints : 0;
 
             setCheckoutCustomerName(restoredName);
             setUserAddressLabel(restoredAddr);
@@ -693,25 +695,42 @@ export default function App() {
             setUserPhone(restoredPhone);
             setLoyaltyPoints(restoredPts);
 
+            let resolvedCoords = userCoords;
+            if (restoredAddr.length >= 4 && !resolvedCoords) {
+              try {
+                const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(restoredAddr)}`);
+                if (geoRes.ok) {
+                  const geoData = await geoRes.json();
+                  if (typeof geoData.lat === 'number' && typeof geoData.lng === 'number') {
+                    resolvedCoords = { lat: geoData.lat, lng: geoData.lng };
+                    setUserCoords(resolvedCoords);
+                  }
+                }
+              } catch {
+                // Ignore geocode fallback error
+              }
+            }
+
             try {
               localStorage.setItem(
-                'ifumo_saved_user_profile',
+                'ifumo_saved_user_profile_v2',
                 JSON.stringify({
                   displayName: restoredName,
                   defaultAddress: restoredAddr,
                   phone: restoredPhone,
+                  coords: resolvedCoords,
                 })
               );
             } catch {
               // Ignore
             }
           } else {
-            const initialName = (user.displayName || checkoutCustomerName || 'Cliente Ifumo').slice(0, 80);
-            const initialAddr = (userAddressLabel || 'Av. Paulista, 1000').slice(0, 240);
-            const initialPhone = (userPhone || '(11) 99876-5432').slice(0, 30);
+            const initialName = (user.displayName || checkoutCustomerName || 'Usuário Google').slice(0, 80);
+            const initialAddr = (userAddressLabel || '').slice(0, 240);
+            const initialPhone = (userPhone || '').slice(0, 30);
             const tier = getLoyaltyTier(loyaltyPoints).tier;
 
-            setCheckoutCustomerName(initialName);
+            setCheckoutCustomerName(user.displayName || checkoutCustomerName || '');
             await setDoc(userRef, {
               uid: user.uid,
               displayName: initialName,
@@ -822,8 +841,8 @@ export default function App() {
             name: data.name,
             neighborhood: data.neighborhood,
             address: data.address,
-            lat: Number(data.lat) || -23.5649,
-            lng: Number(data.lng) || -46.652,
+            lat: Number(data.lat) || 0,
+            lng: Number(data.lng) || 0,
             rating: typeof data.rating === 'number' ? data.rating : 5.0,
             reviewCount: typeof data.reviewCount === 'number' ? data.reviewCount : 1,
             reviewCountFormatted: data.reviewCountFormatted || 'Novo',
@@ -979,28 +998,98 @@ export default function App() {
     }
   };
 
+  // Helper to persist chosen delivery location when signed in
+  const syncChosenDeliveryLocation = async (
+    coords: { lat: number; lng: number },
+    label: string,
+    formattedAddress?: string
+  ) => {
+    const cleanAddr = (formattedAddress || label).trim();
+    setUserCoords(coords);
+    setUserAddressLabel(label);
+    setCheckoutAddress(cleanAddr);
+
+    try {
+      localStorage.setItem(
+        'ifumo_saved_user_profile_v2',
+        JSON.stringify({
+          displayName: checkoutCustomerName,
+          defaultAddress: cleanAddr,
+          phone: userPhone,
+          coords,
+        })
+      );
+    } catch {
+      // Ignore storage error
+    }
+
+    if (currentUser && !simulatedOffline) {
+      try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          defaultAddress: cleanAddr.slice(0, 240),
+          updatedAt: serverTimestamp(),
+        });
+      } catch {
+        // Ignore if user doc not created yet
+      }
+      try {
+        await fetch(`/api/users/${currentUser.uid}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            displayName: checkoutCustomerName || currentUser.displayName || '',
+            email: currentUser.email || '',
+            photoURL: currentUser.photoURL || '',
+            defaultAddress: cleanAddr.slice(0, 240),
+            phone: userPhone,
+            loyaltyPoints,
+            tier: getLoyaltyTier(loyaltyPoints).tier,
+            role: 'customer',
+          }),
+        });
+      } catch {
+        // Ignore network error
+      }
+    }
+  };
+
   // Real Geocoding for Custom Address Input or GPS
   const handleCustomAddressGeocode = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = customAddressInput.trim();
-    if (trimmed.length < 3) return;
+    if (trimmed.length < 4) {
+      setAddressError('Digite rua, número e cidade (mínimo 4 caracteres).');
+      return;
+    }
+    setAddressError('');
     setIsGeocoding(true);
     try {
       const res = await fetch(`/api/geocode?q=${encodeURIComponent(trimmed)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setUserAddressLabel(data.label || trimmed);
-        setUserCoords({ lat: Number(data.lat), lng: Number(data.lng) });
-        setCheckoutAddress(`${data.label || trimmed} - São Paulo`);
+      const data = await res.json();
+      if (res.ok && typeof data.lat === 'number' && typeof data.lng === 'number') {
+        const resolvedLabel = data.label || trimmed;
+        const resolvedFull = data.formattedAddress || resolvedLabel;
+        await syncChosenDeliveryLocation(
+          { lat: Number(data.lat), lng: Number(data.lng) },
+          resolvedLabel,
+          resolvedFull
+        );
         pushToast(
           'Endereço Geolocalizado',
-          `Distâncias e tempo de entrega atualizados para ${data.label || trimmed}.`
+          `Distâncias e tempo de entrega atualizados para ${resolvedLabel}.`
+        );
+        setCustomAddressInput('');
+        setAddressDropdownOpen(false);
+      } else {
+        setAddressError(
+          data.error ||
+            'Endereço não encontrado. Inclua cidade/estado ou marque direto no mapa.'
         );
       }
+    } catch {
+      setAddressError('Erro ao buscar endereço. Tente marcar diretamente no mapa.');
     } finally {
       setIsGeocoding(false);
-      setCustomAddressInput('');
-      setAddressDropdownOpen(false);
     }
   };
 
@@ -1010,20 +1099,25 @@ export default function App() {
       setActiveSection('search');
       return;
     }
+    setAddressError('');
     setIsGeocoding(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        const cLat = pos.coords.latitude;
+        const cLng = pos.coords.longitude;
+        let label = `GPS (${cLat.toFixed(4)}, ${cLng.toFixed(4)})`;
+        let formatted = label;
         try {
-          const res = await fetch(
-            `/api/geocode?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`
-          );
+          const res = await fetch(`/api/geocode?lat=${cLat}&lng=${cLng}`);
           if (res.ok) {
             const data = await res.json();
-            setUserAddressLabel(data.label);
-            setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            setCheckoutAddress(data.label);
+            if (data.label) label = data.label;
+            if (data.formattedAddress) formatted = data.formattedAddress;
           }
+        } catch {
+          // Keep coordinate label
         } finally {
+          await syncChosenDeliveryLocation({ lat: cLat, lng: cLng }, label, formatted);
           setIsGeocoding(false);
           setAddressDropdownOpen(false);
         }
@@ -1044,8 +1138,11 @@ export default function App() {
       const qParam = encodeURIComponent(
         (queryText || searchQuery || 'tabacaria').trim()
       );
+      const coordsQuery = userCoords
+        ? `lat=${userCoords.lat}&lng=${userCoords.lng}&`
+        : '';
       const res = await fetch(
-        `/api/tabacarias/nearby?lat=${userCoords.lat}&lng=${userCoords.lng}&q=${qParam}&openOnly=true`
+        `/api/tabacarias/nearby?${coordsQuery}q=${qParam}&openOnly=true`
       );
       if (res.ok) {
         const data = await res.json();
@@ -1058,15 +1155,21 @@ export default function App() {
         const openCount = Array.isArray(data.openNearbyStores)
           ? data.openNearbyStores.length
           : data.stores?.filter((s: PartnerStore) => s.isOpen).length || 0;
+        const whereLabel = userAddressLabel
+          ? `perto de ${userAddressLabel}`
+          : 'cadastradas na plataforma';
         pushToast(
           'Varredura da Rede de Tabacarias Concluída',
-          `${openCount} tabacarias abertas agora encontradas perto de ${userAddressLabel}.`
+          `${openCount} tabacarias abertas agora encontradas ${whereLabel}.`
         );
       }
     } catch {
+      const whereLabel = userAddressLabel
+        ? `perto de ${userAddressLabel}`
+        : 'cadastradas na plataforma';
       pushToast(
         'Busca na Rede Local',
-        `Exibindo tabacarias abertas agora perto de ${userAddressLabel}.`
+        `Exibindo tabacarias abertas agora ${whereLabel}.`
       );
     } finally {
       setIsSearchingNetwork(false);
@@ -1214,11 +1317,40 @@ export default function App() {
     }
   };
 
+  const handleSignOutGoogle = async () => {
+    await signOut(auth);
+    setCheckoutCustomerName('');
+    setUserAddressLabel('');
+    setCheckoutAddress('');
+    setUserPhone('');
+    setUserCoords(null);
+    setLoyaltyPoints(0);
+    setProfileSavedFeedback('');
+    try {
+      localStorage.removeItem('ifumo_saved_user_profile_v2');
+      localStorage.removeItem('ifumo_loyalty_pts_v2');
+    } catch {
+      // Ignore storage error
+    }
+  };
+
   const handleSaveUserProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanName = checkoutCustomerName.trim() || 'Cliente Ifumo';
-    const cleanAddr = userAddressLabel.trim() || 'Av. Paulista, 1000';
-    const cleanPhone = userPhone.trim() || '(11) 99876-5432';
+    if (!currentUser) {
+      setProfileSavedFeedback(
+        'Entre com sua Conta Google primeiro para salvar suas informações e endereço de entrega.'
+      );
+      return;
+    }
+
+    const cleanName = (checkoutCustomerName || currentUser.displayName || '').trim();
+    const cleanAddr = userAddressLabel.trim();
+    const cleanPhone = userPhone.trim();
+
+    if (cleanName.length < 2) {
+      setProfileSavedFeedback('Informe seu nome completo.');
+      return;
+    }
 
     setIsSavingProfile(true);
     setProfileSavedFeedback('');
@@ -1229,43 +1361,47 @@ export default function App() {
       setCheckoutAddress(cleanAddr);
       setUserPhone(cleanPhone);
 
+      let nextCoords = userCoords;
+      if (!simulatedOffline && cleanAddr.length >= 4) {
+        try {
+          const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(cleanAddr)}`);
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            if (typeof geoData.lat === 'number' && typeof geoData.lng === 'number') {
+              nextCoords = { lat: Number(geoData.lat), lng: Number(geoData.lng) };
+              setUserCoords(nextCoords);
+            }
+          }
+        } catch {
+          // Ignore geocode error
+        }
+      }
+
       // 1. Save in LocalStorage for instant offline & reload restoration
       try {
         localStorage.setItem(
-          'ifumo_saved_user_profile',
+          'ifumo_saved_user_profile_v2',
           JSON.stringify({
             displayName: cleanName,
             defaultAddress: cleanAddr,
             phone: cleanPhone,
+            coords: nextCoords,
           })
         );
       } catch {
         // Ignore storage error
       }
 
-      // 2. Geocode saved address and persist in Backend (/api/users/:uid)
-      const targetUid = currentUser?.uid || 'demo_user_1';
+      // 2. Persist in Backend (/api/users/:uid)
       if (!simulatedOffline) {
         try {
-          const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(cleanAddr)}`);
-          if (geoRes.ok) {
-            const geoData = await geoRes.json();
-            if (geoData.lat && geoData.lng) {
-              setUserCoords({ lat: Number(geoData.lat), lng: Number(geoData.lng) });
-            }
-          }
-        } catch {
-          // Ignore geocode error
-        }
-
-        try {
-          await fetch(`/api/users/${targetUid}`, {
+          await fetch(`/api/users/${currentUser.uid}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               displayName: cleanName.slice(0, 80),
-              email: currentUser?.email || '',
-              photoURL: currentUser?.photoURL || '',
+              email: currentUser.email || '',
+              photoURL: currentUser.photoURL || '',
               defaultAddress: cleanAddr.slice(0, 240),
               phone: cleanPhone.slice(0, 30),
               loyaltyPoints,
@@ -1329,6 +1465,13 @@ export default function App() {
     e.preventDefault();
     if (cartItems.length === 0) return;
 
+    if (!currentUser) {
+      setCheckoutError(
+        'Entre com sua Conta Google antes de confirmar seu endereço e finalizar a entrega.'
+      );
+      return;
+    }
+
     const cleanName = checkoutCustomerName.trim();
     const cleanAddress = checkoutAddress.trim();
     if (cleanName.length < 2) {
@@ -1336,7 +1479,7 @@ export default function App() {
       return;
     }
     if (cleanAddress.length < 6) {
-      setCheckoutError('Por favor, informe o endereço completo para entrega.');
+      setCheckoutError('Por favor, informe o endereço manualmente ou selecione direto no mapa.');
       return;
     }
 
@@ -1895,8 +2038,8 @@ export default function App() {
       name: payload.name.trim().slice(0, 80),
       neighborhood: (payload.neighborhood || 'Centro').trim().slice(0, 80),
       address: payload.address.trim().slice(0, 240),
-      lat: Number(payload.lat) || -23.5649,
-      lng: Number(payload.lng) || -46.652,
+      lat: Number(payload.lat) || 0,
+      lng: Number(payload.lng) || 0,
       rating: 5.0,
       reviewCount: 1,
       reviewCountFormatted: 'Novo',
@@ -2077,7 +2220,7 @@ export default function App() {
           </div>
         </header>
 
-        {/* 2. ADDRESS BAR — Exact match: "Entregar em: Av. Paulista, 1000" + Live Geocoding */}
+        {/* 2. ADDRESS BAR — iFood-style: Google Login + Manual Address or Map Pin */}
         <div className="relative">
           <button
             type="button"
@@ -2092,7 +2235,7 @@ export default function App() {
                   Entregar em:
                 </span>
                 <span className="block text-[14px] font-bold text-white truncate leading-tight">
-                  {userAddressLabel}
+                  {userAddressLabel || 'Informar endereço de entrega'}
                 </span>
               </div>
             </div>
@@ -2100,24 +2243,53 @@ export default function App() {
           </button>
 
           {addressDropdownOpen && (
-            <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-[#1A1B1E] border border-[#2C2D33] shadow-2xl p-3 z-40 space-y-2.5">
-              {/* Real Geocoding Input */}
-              <form onSubmit={handleCustomAddressGeocode} className="flex gap-1.5">
-                <input
-                  type="text"
-                  value={customAddressInput}
-                  onChange={(e) => setCustomAddressInput(e.target.value)}
-                  placeholder="Digite rua e número..."
-                  className="flex-1 rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F5A623]"
-                />
-                <button
-                  type="submit"
-                  disabled={isGeocoding}
-                  className="px-3 py-2 rounded-xl bg-[#F5A623] text-[#0B0B0D] text-xs font-extrabold shrink-0"
-                >
-                  {isGeocoding ? '...' : 'OK'}
-                </button>
-              </form>
+            <div className="absolute left-0 mt-2 w-80 rounded-2xl bg-[#1A1B1E] border border-[#2C2D33] shadow-2xl p-3.5 z-40 space-y-3">
+              {!currentUser && (
+                <div className="p-2.5 rounded-xl bg-[#0B0B0D] border border-[#F5A623]/40 space-y-2">
+                  <p className="text-[11px] font-semibold text-[#D1D5DB]">
+                    Entre com sua Conta Google para salvar e sincronizar seu endereço de entrega:
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    className="w-full py-2 px-3 rounded-xl bg-white hover:bg-gray-100 text-[#0B0B0D] text-xs font-extrabold flex items-center justify-center gap-2"
+                  >
+                    <GoogleBadgeIcon className="w-3.5 h-3.5 shrink-0" />
+                    <span>Entrar com Google</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Manual Address Geocoding Input */}
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-bold text-[#9CA3AF]">
+                  Colocar endereço manual:
+                </span>
+                <form onSubmit={handleCustomAddressGeocode} className="flex gap-1.5">
+                  <input
+                    type="text"
+                    value={customAddressInput}
+                    onChange={(e) => {
+                      setCustomAddressInput(e.target.value);
+                      if (addressError) setAddressError('');
+                    }}
+                    placeholder="Rua, número, bairro e cidade..."
+                    className="flex-1 rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3 py-2 text-xs text-white focus:outline-none focus:border-[#F5A623]"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isGeocoding}
+                    className="px-3 py-2 rounded-xl bg-[#F5A623] text-[#0B0B0D] text-xs font-extrabold shrink-0"
+                  >
+                    {isGeocoding ? '...' : 'OK'}
+                  </button>
+                </form>
+                {addressError && (
+                  <p className="text-[11px] font-semibold text-[#EF4444]">
+                    {addressError}
+                  </p>
+                )}
+              </div>
 
               <button
                 type="button"
@@ -2128,42 +2300,16 @@ export default function App() {
                 <span>Usar Meu GPS Atual</span>
               </button>
 
-              <div className="space-y-1 pt-1 border-t border-[#26272B]">
-                {QUICK_ADDRESSES.map((addr) => (
-                  <button
-                    key={addr.label}
-                    type="button"
-                    onClick={() => {
-                      setUserAddressLabel(addr.label);
-                      setUserCoords({ lat: addr.lat, lng: addr.lng });
-                      setCheckoutAddress(`${addr.label} - São Paulo`);
-                      setAddressDropdownOpen(false);
-                      pushToast(
-                        'Endereço Atualizado',
-                        `Entregas calculadas para ${addr.label}.`
-                      );
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between ${
-                      userAddressLabel === addr.label
-                        ? 'bg-[#F5A623]/15 text-[#F5A623]'
-                        : 'text-white hover:bg-[#24252A]'
-                    }`}
-                  >
-                    <span>{addr.label}</span>
-                    {userAddressLabel === addr.label && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
-
               <button
                 type="button"
                 onClick={() => {
                   setAddressDropdownOpen(false);
                   setActiveSection('search');
                 }}
-                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#F5A623] hover:bg-[#24252A] border-t border-[#26272B] pt-2"
+                className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-[#F5A623] hover:bg-[#24252A] border-t border-[#26272B] pt-2 flex items-center gap-2"
               >
-                Abrir Mapa GPS em Tempo Real →
+                <MapPin className="w-3.5 h-3.5" />
+                <span>Escolher / Marcar Direto no Mapa →</span>
               </button>
             </div>
           )}
@@ -2329,12 +2475,14 @@ export default function App() {
                       .filter((s) => s.isOpen)
                       .map((store) => {
                         const isSelected = selectedStoreFilter === store.id;
-                        const distKm = calculateDistanceKm(
-                          userCoords.lat,
-                          userCoords.lng,
-                          store.lat,
-                          store.lng
-                        );
+                        const distKm = userCoords
+                          ? calculateDistanceKm(
+                              userCoords.lat,
+                              userCoords.lng,
+                              store.lat,
+                              store.lng
+                            )
+                          : null;
                         return (
                           <div
                             key={store.id}
@@ -2395,8 +2543,8 @@ export default function App() {
                                   ({store.reviewCountFormatted})
                                 </span>
                                 <span className="text-[#4B5563]">·</span>
-                                <span className="text-[#9CA3AF] font-mono-tabular">
-                                  {distKm} km
+                                <span className="text-[#9CA3AF] font-mono-tabular truncate">
+                                  {distKm !== null ? `${distKm} km` : store.neighborhood}
                                 </span>
                               </div>
 
@@ -2460,15 +2608,24 @@ export default function App() {
                 {selectedStoreFilter !== 'all' && (() => {
                   const st = stores.find((s) => s.id === selectedStoreFilter);
                   if (!st) return null;
-                  const dist = calculateDistanceKm(userCoords.lat, userCoords.lng, st.lat, st.lng);
-                  const eta = estimateDeliveryMinutes(dist, st.prepMinutes);
+                  const dist = userCoords
+                    ? calculateDistanceKm(userCoords.lat, userCoords.lng, st.lat, st.lng)
+                    : null;
+                  const eta =
+                    dist !== null ? estimateDeliveryMinutes(dist, st.prepMinutes) : null;
                   return (
                     <div className="p-3 rounded-2xl bg-[#1A1B1E] border border-[#F5A623]/40 flex items-center justify-between gap-2 text-xs">
                       <div>
                         <p className="font-bold text-white">{st.name} · {st.neighborhood}</p>
-                        <p className="text-[#9CA3AF]">
-                          Distância GPS: <strong className="text-[#F5A623]">{dist} km</strong> · Tempo estimado: <strong className="text-[#4ADE80]">~{eta} min</strong>
-                        </p>
+                        {dist !== null && eta !== null ? (
+                          <p className="text-[#9CA3AF]">
+                            Distância GPS: <strong className="text-[#F5A623]">{dist} km</strong> · Tempo estimado: <strong className="text-[#4ADE80]">~{eta} min</strong>
+                          </p>
+                        ) : (
+                          <p className="text-[#9CA3AF]">
+                            {st.address} · Informe seu endereço para calcular a distância.
+                          </p>
+                        )}
                       </div>
                       <button
                         type="button"
@@ -2654,12 +2811,10 @@ export default function App() {
                 userCoords={userCoords}
                 userAddressLabel={userAddressLabel}
                 onUpdateUserLocation={(coords, label) => {
-                  setUserCoords(coords);
-                  setUserAddressLabel(label);
-                  setCheckoutAddress(`${label} - São Paulo`);
+                  syncChosenDeliveryLocation(coords, label, label);
                   pushToast(
-                    'Localização GPS Atualizada',
-                    `Calculando tabacarias próximas a ${label}.`
+                    'Endereço Definido no Mapa',
+                    `Local de entrega atualizado para ${label}.`
                   );
                 }}
                 activeOrder={activeOrder}
@@ -2799,7 +2954,11 @@ export default function App() {
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-[#24252A] border border-[#F5A623] flex items-center justify-center text-[#F5A623] font-extrabold text-lg shrink-0">
-                        {checkoutCustomerName.charAt(0).toUpperCase()}
+                        {checkoutCustomerName.trim() ? (
+                          checkoutCustomerName.trim().charAt(0).toUpperCase()
+                        ) : (
+                          <UserIcon className="w-5 h-5" />
+                        )}
                       </div>
                     )}
                     <div className="min-w-0">
@@ -2808,7 +2967,9 @@ export default function App() {
                           id="google-account-heading"
                           className="text-base font-extrabold text-white truncate"
                         >
-                          {checkoutCustomerName}
+                          {checkoutCustomerName ||
+                            currentUser?.displayName ||
+                            'Entre com sua Conta Google'}
                         </h2>
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2817,12 +2978,12 @@ export default function App() {
                               : 'bg-[#F5A623]/15 text-[#F5A623]'
                           }`}
                         >
-                          {currentUser ? 'Google Conectado' : 'Conta Local'}
+                          {currentUser ? 'Google Conectado' : 'Visitante'}
                         </span>
                       </div>
                       <p className="text-xs text-[#9CA3AF] truncate">
                         {currentUser?.email ||
-                          'Conecte sua Conta Google para salvar seus dados na nuvem'}
+                          'Conecte sua Conta Google para salvar seus dados e endereços'}
                       </p>
                       <p className="text-xs text-[#F5A623] font-mono-tabular font-bold mt-0.5">
                         Clube {getLoyaltyTier(loyaltyPoints).tier} · {loyaltyPoints} pontos
@@ -2834,7 +2995,7 @@ export default function App() {
                     {currentUser ? (
                       <button
                         type="button"
-                        onClick={() => signOut(auth)}
+                        onClick={handleSignOutGoogle}
                         className="px-3.5 py-2.5 rounded-xl border border-[#26272B] bg-[#0B0B0D] hover:border-[#EF4444] text-xs font-bold text-white flex items-center gap-2 min-h-[40px]"
                       >
                         <LogOut className="w-4 h-4 text-[#EF4444]" />
@@ -2915,7 +3076,7 @@ export default function App() {
                             setUserAddressLabel(e.target.value);
                             setCheckoutAddress(e.target.value);
                           }}
-                          placeholder="Ex: Av. Paulista, 1000"
+                          placeholder="Rua, número, bairro e cidade"
                           className="w-full rounded-xl bg-[#0B0B0D] border border-[#26272B] pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                         />
                       </div>
@@ -2935,7 +3096,7 @@ export default function App() {
                           type="tel"
                           value={userPhone}
                           onChange={(e) => setUserPhone(e.target.value)}
-                          placeholder="(11) 99999-0000"
+                          placeholder="(00) 00000-0000"
                           className="w-full rounded-xl bg-[#0B0B0D] border border-[#26272B] pl-9 pr-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                         />
                       </div>
@@ -2950,7 +3111,7 @@ export default function App() {
                       </p>
                     ) : (
                       <p className="text-[11px] text-[#9CA3AF]">
-                        Seus dados preenchem automaticamente o endereço de entrega e o checkout Stripe.
+                        Seus dados preenchem automaticamente o endereço de entrega e os pedidos.
                       </p>
                     )}
 

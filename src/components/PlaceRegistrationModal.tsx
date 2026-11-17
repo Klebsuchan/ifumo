@@ -29,7 +29,7 @@ export interface PlaceRegistrationPayload {
 interface PlaceRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
-  userCoords: { lat: number; lng: number };
+  userCoords: { lat: number; lng: number } | null;
   stores: PartnerStore[];
   onRegisterPlace: (payload: PlaceRegistrationPayload) => Promise<void>;
   onToggleStoreOpen: (storeId: string, nextIsOpen: boolean) => Promise<void>;
@@ -48,8 +48,8 @@ export function PlaceRegistrationModal({
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [lat, setLat] = useState<string>(String(userCoords.lat));
-  const [lng, setLng] = useState<string>(String(userCoords.lng));
+  const [lat, setLat] = useState<string>(userCoords ? String(userCoords.lat) : '');
+  const [lng, setLng] = useState<string>(userCoords ? String(userCoords.lng) : '');
   const [specialty, setSpecialty] = useState(
     'Marlboro, Camel, Kretek, Harmony, Sedas RAW & Isqueiros'
   );
@@ -97,9 +97,13 @@ export function PlaceRegistrationModal({
   const handleUseCurrentGps = () => {
     setErrorMsg('');
     if (!('geolocation' in navigator)) {
-      setLat(String(userCoords.lat));
-      setLng(String(userCoords.lng));
-      setSuccessMsg('Coordenadas atuais aplicadas!');
+      if (userCoords) {
+        setLat(String(userCoords.lat));
+        setLng(String(userCoords.lng));
+        setSuccessMsg('Coordenadas atuais aplicadas!');
+      } else {
+        setErrorMsg('GPS indisponível. Digite o endereço e clique em Geocodificar.');
+      }
       return;
     }
     setIsGeocoding(true);
@@ -125,10 +129,14 @@ export function PlaceRegistrationModal({
         }
       },
       () => {
-        setLat(String(userCoords.lat));
-        setLng(String(userCoords.lng));
+        if (userCoords) {
+          setLat(String(userCoords.lat));
+          setLng(String(userCoords.lng));
+          setSuccessMsg('Coordenadas do mapa aplicadas!');
+        } else {
+          setErrorMsg('Não foi possível acessar o GPS. Use Geocodificar após digitar o endereço.');
+        }
         setIsGeocoding(false);
-        setSuccessMsg('Coordenadas do mapa aplicadas!');
       },
       { timeout: 5000 }
     );
@@ -157,8 +165,8 @@ export function PlaceRegistrationModal({
         name: cleanName,
         neighborhood: neighborhood.trim() || 'Centro',
         address: cleanAddress,
-        lat: Number(lat) || userCoords.lat,
-        lng: Number(lng) || userCoords.lng,
+        lat: Number(lat) || userCoords?.lat || 0,
+        lng: Number(lng) || userCoords?.lng || 0,
         prepMinutes: 8,
         etaRangeLabel: etaRangeLabel.trim() || '20-30 min',
         deliveryLabel: deliveryLabel.trim() || 'Grátis',
@@ -248,7 +256,7 @@ export function PlaceRegistrationModal({
                 type="text"
                 value={neighborhood}
                 onChange={(e) => setNeighborhood(e.target.value)}
-                placeholder="Ex: Bela Vista · São Paulo"
+                placeholder="Ex: Centro · Sua Cidade"
                 className="w-full rounded-xl bg-[#1A1B1E] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
               />
             </div>
@@ -267,7 +275,7 @@ export function PlaceRegistrationModal({
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Ex: Av. Brigadeiro Luís Antônio, 2050 - São Paulo"
+                placeholder="Ex: Rua Exemplo, 250 - Centro, Sua Cidade - UF"
                 className="flex-1 rounded-xl bg-[#1A1B1E] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
               />
               <button

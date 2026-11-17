@@ -240,7 +240,7 @@ export function LoyaltyAndReviewsSection({
                   type="text"
                   value={authorName}
                   onChange={(e) => setAuthorName(e.target.value)}
-                  placeholder="Ex: Lucas Andrade"
+                  placeholder="Seu nome"
                   className="w-full rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                 />
               </div>

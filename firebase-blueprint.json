@@ -21,13 +21,13 @@
         "defaultAddress": {
           "type": "string",
           "description": "Endereço padrão de entrega salvo pelo usuário",
-          "minLength": 3,
+          "minLength": 0,
           "maxLength": 240
         },
         "phone": {
           "type": "string",
           "description": "Telefone ou WhatsApp de contato para entrega (+18)",
-          "minLength": 3,
+          "minLength": 0,
           "maxLength": 30
         },
         "loyaltyPoints": {

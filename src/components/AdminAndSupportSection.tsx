@@ -38,7 +38,7 @@ interface AdminAndSupportSectionProps {
   orders: OrderRecord[];
   stores: PartnerStore[];
   products: ProductItem[];
-  userCoords: { lat: number; lng: number };
+  userCoords: { lat: number; lng: number } | null;
   onRegisterPlace: (payload: PlaceRegistrationPayload) => Promise<void>;
   onToggleStoreOpen: (storeId: string, nextIsOpen: boolean) => Promise<void>;
   onAdvanceOrderStatus: (orderId: string, nextStatus: OrderStatus) => void;
@@ -105,8 +105,8 @@ export function AdminAndSupportSection({
   const [placeName, setPlaceName] = useState('');
   const [placeNeighborhood, setPlaceNeighborhood] = useState('');
   const [placeAddress, setPlaceAddress] = useState('');
-  const [placeLat, setPlaceLat] = useState<string>(String(userCoords.lat));
-  const [placeLng, setPlaceLng] = useState<string>(String(userCoords.lng));
+  const [placeLat, setPlaceLat] = useState<string>(userCoords ? String(userCoords.lat) : '');
+  const [placeLng, setPlaceLng] = useState<string>(userCoords ? String(userCoords.lng) : '');
   const [placeSpecialty, setPlaceSpecialty] = useState(
     'Marlboro, Camel, Kretek, Harmony, Charutos, Sedas & Isqueiros'
   );
@@ -272,8 +272,8 @@ export function AdminAndSupportSection({
         name: placeName.trim(),
         neighborhood: placeNeighborhood.trim() || 'Centro',
         address: placeAddress.trim(),
-        lat: Number(placeLat) || userCoords.lat,
-        lng: Number(placeLng) || userCoords.lng,
+        lat: Number(placeLat) || userCoords?.lat || 0,
+        lng: Number(placeLng) || userCoords?.lng || 0,
         specialty:
           placeSpecialty.trim() ||
           'Cigarros, Tabaco, Charutos, Seda, Isqueiros & Vape',
@@ -567,7 +567,7 @@ export function AdminAndSupportSection({
                   type="text"
                   value={placeName}
                   onChange={(e) => setPlaceName(e.target.value)}
-                  placeholder="Ex: Tabacaria Paulista 24h"
+                  placeholder="Ex: Tabacaria Central 24h"
                   className="w-full rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                 />
               </div>
@@ -584,7 +584,7 @@ export function AdminAndSupportSection({
                   type="text"
                   value={placeNeighborhood}
                   onChange={(e) => setPlaceNeighborhood(e.target.value)}
-                  placeholder="Ex: Bela Vista · São Paulo"
+                  placeholder="Ex: Centro · Sua Cidade"
                   className="w-full rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                 />
               </div>
@@ -603,7 +603,7 @@ export function AdminAndSupportSection({
                   type="text"
                   value={placeAddress}
                   onChange={(e) => setPlaceAddress(e.target.value)}
-                  placeholder="Ex: Av. Brigadeiro Luís Antônio, 2050 - Bela Vista, São Paulo"
+                  placeholder="Ex: Rua Principal, 123 - Centro, Sua Cidade - UF"
                   className="flex-1 rounded-xl bg-[#0B0B0D] border border-[#26272B] px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-[#F5A623]"
                 />
                 <button

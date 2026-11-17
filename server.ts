@@ -265,29 +265,29 @@ app.put('/api/users/:uid', (req, res) => {
   const savedProfile: SavedUserProfile = {
     uid: String(uid).slice(0, 128),
     displayName: String(
-      displayName || existing?.displayName || 'Cliente Ifumo'
+      displayName ?? existing?.displayName ?? ''
     )
       .trim()
       .slice(0, 80),
-    email: String(email || existing?.email || '')
+    email: String(email ?? existing?.email ?? '')
       .trim()
       .slice(0, 120),
-    photoURL: String(photoURL || existing?.photoURL || '')
+    photoURL: String(photoURL ?? existing?.photoURL ?? '')
       .trim()
       .slice(0, 300),
     defaultAddress: String(
-      defaultAddress || existing?.defaultAddress || 'Av. Paulista, 1000'
+      defaultAddress ?? existing?.defaultAddress ?? ''
     )
       .trim()
       .slice(0, 240),
-    phone: String(phone || existing?.phone || '(11) 99999-0000')
+    phone: String(phone ?? existing?.phone ?? '')
       .trim()
       .slice(0, 30),
     loyaltyPoints:
       typeof loyaltyPoints === 'number'
         ? loyaltyPoints
-        : (existing?.loyaltyPoints ?? 420),
-    tier: String(tier || existing?.tier || 'Prata').slice(0, 20),
+        : (existing?.loyaltyPoints ?? 0),
+    tier: String(tier || existing?.tier || 'Bronze').slice(0, 20),
     role: (role as SavedUserProfile['role']) || existing?.role || 'customer',
     updatedAt: new Date().toLocaleTimeString('pt-BR', {
       hour: '2-digit',
@@ -328,7 +328,7 @@ app.get('/api/events', (req, res) => {
   });
 });
 
-// 4. Real Geocoding & Address Search (OpenStreetMap Nominatim + Fallback)
+// 4. Real Geocoding & Address Search (OpenStreetMap Nominatim — Nationwide/Global)
 app.get('/api/geocode', async (req, res) => {
   const addressQuery = String(req.query.q || req.query.address || '').trim();
   const latParam = req.query.lat ? Number(req.query.lat) : null;
@@ -348,49 +348,86 @@ app.get('/api/geocode', async (req, res) => {
       if (response.ok) {
         const data = await response.json();
         const road =
-          data.address?.road || data.address?.suburb || 'Endereço GPS';
+          data.address?.road ||
+          data.address?.pedestrian ||
+          data.address?.suburb ||
+          'Local marcado no mapa';
         const houseNumber = data.address?.house_number
           ? `, ${data.address.house_number}`
           : '';
         const suburb =
           data.address?.suburb ||
           data.address?.neighbourhood ||
-          'São Paulo';
-        const formatted = `${road}${houseNumber} · ${suburb}`;
+          data.address?.quarter ||
+          '';
+        const city =
+          data.address?.city ||
+          data.address?.town ||
+          data.address?.municipality ||
+          data.address?.village ||
+          '';
+        const citySuffix = city ? ` - ${city}` : '';
+        const suburbPart = suburb ? ` · ${suburb}` : '';
+        const formatted = `${road}${houseNumber}${suburbPart}${citySuffix}`;
         return res.json({
           label: formatted,
-          formattedAddress: formatted,
+          formattedAddress: data.display_name || formatted,
           lat: latParam,
           lng: lngParam,
         });
       }
+      const fallbackCoordLabel = `Local (${latParam.toFixed(4)}, ${lngParam.toFixed(4)})`;
+      return res.json({
+        label: fallbackCoordLabel,
+        formattedAddress: fallbackCoordLabel,
+        lat: latParam,
+        lng: lngParam,
+      });
     } else if (addressQuery.length >= 3) {
-      const encoded = encodeURIComponent(`${addressQuery}, São Paulo, Brasil`);
+      const encoded = encodeURIComponent(addressQuery);
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=br&limit=1&addressdetails=1`,
         { headers: { 'User-Agent': 'IfumoDeliveryApp/1.0' } }
       );
       if (response.ok) {
         const results = await response.json();
         if (Array.isArray(results) && results.length > 0) {
+          const item = results[0];
+          const road = item.address?.road || '';
+          const house = item.address?.house_number ? `, ${item.address.house_number}` : '';
+          const city =
+            item.address?.city ||
+            item.address?.town ||
+            item.address?.municipality ||
+            '';
+          const shortLabel = road
+            ? `${road}${house}${city ? ` - ${city}` : ''}`
+            : addressQuery;
           return res.json({
-            label: addressQuery,
-            formattedAddress: results[0].display_name || addressQuery,
-            lat: Number(results[0].lat),
-            lng: Number(results[0].lon),
+            label: shortLabel,
+            formattedAddress: item.display_name || addressQuery,
+            lat: Number(item.lat),
+            lng: Number(item.lon),
           });
         }
       }
     }
   } catch {
-    // Fallback to deterministic São Paulo coordinates if external network is restricted
+    // External geocode request failed
   }
 
-  return res.json({
-    label: addressQuery || 'Av. Paulista, 1000',
-    formattedAddress: addressQuery || 'Av. Paulista, 1000',
-    lat: latParam ?? -23.5649,
-    lng: lngParam ?? -46.652,
+  if (latParam !== null && lngParam !== null && !Number.isNaN(latParam) && !Number.isNaN(lngParam)) {
+    const coordLabel = `Local (${latParam.toFixed(4)}, ${lngParam.toFixed(4)})`;
+    return res.json({
+      label: coordLabel,
+      formattedAddress: coordLabel,
+      lat: latParam,
+      lng: lngParam,
+    });
+  }
+
+  return res.status(404).json({
+    error: 'Endereço não encontrado. Informe rua, número e cidade ou marque diretamente no mapa.',
   });
 });
 
@@ -460,9 +497,9 @@ app.post('/api/stores', async (req, res) => {
       (resolvedLat === 0 && resolvedLng === 0)
     ) {
       try {
-        const encoded = encodeURIComponent(`${cleanAddress}, Brasil`);
+        const encoded = encodeURIComponent(cleanAddress);
         const geoRes = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1&addressdetails=1`,
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&countrycodes=br&limit=1&addressdetails=1`,
           { headers: { 'User-Agent': 'IfumoDeliveryApp/1.0' } }
         );
         if (geoRes.ok) {
@@ -474,19 +511,27 @@ app.post('/api/stores', async (req, res) => {
               resolvedNeighborhood =
                 geoData[0].address?.suburb ||
                 geoData[0].address?.neighbourhood ||
-                geoData[0].address?.city_district ||
+                geoData[0].address?.city ||
                 'Centro';
             }
           }
         }
       } catch {
-        // Fallback coordinates if offline
+        // Ignore geocode error
       }
     }
 
-    if (Number.isNaN(resolvedLat) || resolvedLat === 0) resolvedLat = -23.5649;
-    if (Number.isNaN(resolvedLng) || resolvedLng === 0) resolvedLng = -46.652;
-    if (!resolvedNeighborhood) resolvedNeighborhood = 'Região Central';
+    if (
+      Number.isNaN(resolvedLat) ||
+      Number.isNaN(resolvedLng) ||
+      (resolvedLat === 0 && resolvedLng === 0)
+    ) {
+      return res.status(400).json({
+        error:
+          'Não foi possível localizar as coordenadas do endereço. Clique em "Geocodificar" ou "Usar Meu GPS".',
+      });
+    }
+    if (!resolvedNeighborhood) resolvedNeighborhood = 'Centro';
 
     const spriteChoices = [
       '54 824 164 124',
@@ -577,9 +622,9 @@ function handleUpdateStore(req: express.Request, res: express.Response) {
         ownerId: String(base.ownerId || 'user_registered').slice(0, 128),
         name: String(base.name || 'Tabacaria Parceira').slice(0, 80),
         neighborhood: String(base.neighborhood || 'Centro').slice(0, 80),
-        address: String(base.address || 'Av. Paulista, 1000').slice(0, 240),
-        lat: Number(base.lat) || -23.5649,
-        lng: Number(base.lng) || -46.652,
+        address: String(base.address || '').slice(0, 240),
+        lat: Number(base.lat) || 0,
+        lng: Number(base.lng) || 0,
         rating: Number(base.rating) || 5.0,
         reviewCount: Number(base.reviewCount) || 1,
         reviewCountFormatted: String(base.reviewCountFormatted || 'Novo'),
@@ -714,10 +759,7 @@ async function handleCreateOrder(req: express.Request, res: express.Response) {
       deliveryFee: Number(Number(deliveryFee || 0).toFixed(2)),
       paymentMethod: selectedMethod,
       stripeTxId: deliveryProtocol.slice(0, 110),
-      deliveryAddress: String(deliveryAddress || 'Av. Paulista, 1000').slice(
-        0,
-        240
-      ),
+      deliveryAddress: String(deliveryAddress || '').trim().slice(0, 240),
       status: 'confirmed',
       loyaltyEarned: Number(
         loyaltyEarned || Math.max(5, Math.round(Number(totalAmount || 0) * 1.5))
