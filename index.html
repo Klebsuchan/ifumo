@@ -3,24 +3,156 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>iFumo — Delivery de Cigarros, Charutos &amp; Tabacaria</title>
-    <meta name="description" content="Plataforma mobile-first de delivery de cigarros, palheiros, charutos e tabacaria com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo." />
-    <meta name="theme-color" content="#FAF6F0" />
+    <title>iFumo — Delivery de Tabacarias &amp; Charutarias</title>
+    <meta
+      name="description"
+      content="Plataforma mobile-first de delivery para tabacarias e charutarias com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo."
+    />
+    <meta
+      name="keywords"
+      content="ifumo, delivery de cigarros, tabacaria perto de mim, tabacaria 24h, delivery tabacaria, marlboro, camel, kretek, harmony, charutos, seda raw, ocb, isqueiro zippo, vape, cardápio estilo ifood"
+    />
+    <meta name="author" content="iFumo Delivery" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
+    <meta name="theme-color" content="#EA1D2C" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="iFumo" />
+
+    <!-- Canonical & Favicons (Estilo iFood) -->
+    <link
+      rel="canonical"
+      href="https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" type="image/svg+xml" href="/icon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <meta property="og:title" content="iFumo — Delivery de Cigarros, Charutos &amp; Tabacaria" />
-    <meta property="og:description" content="Plataforma mobile-first de delivery de cigarros, palheiros, charutos e tabacaria com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo." />
+
+    <!-- OpenGraph Social Sharing Cards -->
     <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:site_name" content="iFumo Delivery" />
+    <meta
+      property="og:url"
+      content="https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/"
+    />
+    <meta
+      property="og:title"
+      content="iFumo — Delivery de Tabacarias &amp; Charutarias"
+    />
+    <meta
+      property="og:description"
+      content="Plataforma mobile-first de delivery para tabacarias e charutarias com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo."
+    />
+    <meta
+      property="og:image"
+      content="https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/og-banner.svg"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="iFumo — Delivery Express de Tabacarias e Charutarias em até 30 minutos"
+    />
+
+    <!-- Twitter / X Large Summary Card -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="iFumo — Delivery de Tabacarias &amp; Charutarias"
+    />
+    <meta
+      name="twitter:description"
+      content="Plataforma mobile-first de delivery para tabacarias e charutarias com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo."
+    />
+    <meta
+      name="twitter:image"
+      content="https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/og-banner.svg"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="iFumo — Delivery Express de Tabacarias e Charutarias"
+    />
+
+    <!-- Schema.org Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebApplication",
+            "@id": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/#webapp",
+            "name": "iFumo — Delivery de Tabacarias & Charutarias",
+            "alternateName": "Ifumo Delivery",
+            "url": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/",
+            "applicationCategory": "ShoppingApplication",
+            "operatingSystem": "All",
+            "inLanguage": "pt-BR",
+            "description": "Plataforma mobile-first de delivery para tabacarias e charutarias com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo.",
+            "image": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/og-banner.svg",
+            "featureList": [
+              "Busca por geolocalização GPS de tabacarias abertas perto de você",
+              "Catálogo em 6 categorias: Cigarros, Tabaco, Charutos, Seda, Isqueiros e Vape",
+              "Pagamento na entrega via Pix, Dinheiro ou Cartão de Crédito/Débito",
+              "Portal do Parceiro estilo iFood no Perfil para cadastro de loja, cardápio e gestão de pedidos",
+              "Acompanhamento de pedidos em tempo real (Em Preparo, Enviado e Entregue) via Server-Sent Events"
+            ],
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "BRL",
+              "availability": "https://schema.org/InStock"
+            }
+          },
+          {
+            "@type": "OnlineBusiness",
+            "@id": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/#organization",
+            "name": "iFumo Delivery",
+            "url": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/",
+            "logo": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/favicon.svg",
+            "areaServed": {
+              "@type": "Country",
+              "name": "BR"
+            }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://ais-pre-jt4pisnykmwx6zg6aluaii-385994013673.us-east1.run.app/#faq",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Como cadastrar minha tabacaria e produtos no iFumo?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Acesse a aba Perfil, entre no Portal do Parceiro Estilo iFood, cadastre seu estabelecimento com endereço e coordenadas GPS e publique seus produtos por categoria (Cigarros, Tabaco, Charutos, Seda, Isqueiros e Vape) na aba Cardápio iFood."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Quais são as formas de pagamento aceitas na entrega?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "O pagamento é realizado diretamente na entrega com o motoboy parceiro, podendo escolher entre Pix (QR Code na entrega), Cartão de Crédito ou Débito (maquininha) ou Dinheiro (com opção de troco)."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600;1,700&family=JetBrains+Mono:wght@500;600;700&family=Oswald:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,600;1,700&family=JetBrains+Mono:wght@500;600;700&family=Oswald:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
   </head>
-  <body class="bg-[#FAF6F0] text-[#1C1917] antialiased selection:bg-[#F59E0B] selection:text-white">
+  <body class="bg-[#0B0B0C] text-[#F5F5F7] antialiased selection:bg-[#F59E0B] selection:text-black">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

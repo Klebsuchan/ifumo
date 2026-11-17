@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="ifumoBg" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#EA1D2C" />
+      <stop offset="55%" stop-color="#D9381E" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <linearGradient id="ifumoSmile" x1="112" y1="350" x2="408" y2="350" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="100%" stop-color="#FDE68A" />
+    </linearGradient>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.28" />
+    </filter>
+  </defs>
+
+  <!-- iFood-style vibrant rounded app squircle -->
+  <rect width="512" height="512" rx="128" fill="url(#ifumoBg)" />
+  <rect x="18" y="18" width="476" height="476" rx="112" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="6" />
+
+  <!-- Subtle smoke wave at top right -->
+  <path d="M366 154C366 128 394 118 394 92C394 70 368 60 368 40" stroke="#FDE68A" stroke-width="14" stroke-linecap="round" opacity="0.85" />
+  <path d="M404 166C404 144 426 136 426 114C426 94 404 86 404 68" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.65" />
+
+  <!-- Bold iFood-inspired "iF" delivery typography -->
+  <g filter="url(#softShadow)">
+    <!-- Lowercase 'i' stem + glowing ember dot -->
+    <circle cx="152" cy="134" r="26" fill="#FDE68A" />
+    <circle cx="152" cy="134" r="13" fill="#FFFFFF" />
+    <rect x="128" y="176" width="48" height="126" rx="24" fill="#FFFFFF" />
+
+    <!-- Bold 'F' shaped with a sleek cigarette filter/ember bar -->
+    <path d="M212 146C212 132.745 222.745 122 236 122H344C357.255 122 368 132.745 368 146C368 159.255 357.255 170 344 170H262V202H328C341.255 202 352 212.745 352 226C352 239.255 341.255 250 328 250H262V278C262 291.255 251.255 302 238 302C223.641 302 212 290.359 212 276V146Z" fill="#FFFFFF" />
+    <!-- Glowing ember tip on the top bar of F -->
+    <rect x="352" y="122" width="32" height="48" rx="14" fill="#FDE68A" />
+  </g>
+
+  <!-- Iconic iFood-style Delivery Smile Arrow underneath -->
+  <g filter="url(#softShadow)">
+    <path d="M116 346C174 416 310 422 386 344" stroke="url(#ifumoSmile)" stroke-width="30" stroke-linecap="round" />
+    <path d="M342 332L396 334L388 388" stroke="#FDE68A" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+</svg>

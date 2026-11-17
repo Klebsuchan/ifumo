@@ -600,6 +600,24 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Dynamic Canonical & OpenGraph URL Resolution (SEO)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const canonicalUrl = `${window.location.origin}${window.location.pathname}`;
+    const canonicalLink = document.querySelector<HTMLLinkElement>(
+      'link[rel="canonical"]'
+    );
+    if (canonicalLink) {
+      canonicalLink.href = canonicalUrl;
+    }
+    const ogUrlMeta = document.querySelector<HTMLMetaElement>(
+      'meta[property="og:url"]'
+    );
+    if (ogUrlMeta) {
+      ogUrlMeta.content = canonicalUrl;
+    }
+  }, [activeSection]);
+
   // Firestore Real-Time Listeners (when authenticated)
   useEffect(() => {
     if (!authReady || !currentUser) return;

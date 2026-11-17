@@ -12,18 +12,32 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+        includeAssets: [
+          'favicon.svg',
+          'icon.svg',
+          'og-banner.svg',
+          'robots.txt',
+          'sitemap.xml',
+          'apple-touch-icon.png',
+        ],
         manifest: {
           id: '/',
           name: 'iFumo — Delivery de Tabacarias & Charutarias',
           short_name: 'iFumo',
-          description: 'Delivery expresso de charutos, tabacos artesanais, narguilé e acessórios com rastreio em tempo real.',
-          theme_color: '#12100E',
-          background_color: '#12100E',
+          description:
+            'Plataforma mobile-first de delivery para tabacarias e charutarias com geolocalização, rastreio em tempo real, checkout Stripe, fidelidade gamificada e painel administrativo.',
+          theme_color: '#EA1D2C',
+          background_color: '#0B0B0C',
           display: 'standalone',
           start_url: '/',
           scope: '/',
           icons: [
+            {
+              src: '/favicon.svg',
+              sizes: 'any',
+              type: 'image/svg+xml',
+              purpose: 'any',
+            },
             {
               src: '/pwa-192x192.png',
               sizes: '192x192',
