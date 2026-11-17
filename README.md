@@ -243,6 +243,30 @@ Acesse `http://localhost:3000` no navegador.
 
 ---
 
+## Deploy na Vercel (Produção 100% Funcional)
+
+O projeto já está 100% preparado para deploy na **Vercel** (via integração com GitHub ou Vercel CLI), combinando frontend estático Vite (`dist/`) com **Vercel Serverless Functions** (`/api/index.ts`) e sincronização em tempo real no **Cloud Firestore**:
+
+1. **Roteamento Serverless (`vercel.json` + `/api/index.ts`)**:
+   - Todas as chamadas `/api/*` (`/api/stores`, `/api/products`, `/api/orders`, `/api/geocode`, `/api/sync`, `/api/state`) são roteadas para a Serverless Function em `/api/index.ts`.
+   - O sistema detecta automaticamente o ambiente Vercel (`process.env.VERCEL`) e utiliza `os.tmpdir()` para gravação segura sem erro de sistema de arquivos somente-leitura (`EROFS`).
+2. **Persistência Tripla Resiliente a Cold Starts**:
+   - **Cloud Firestore (`onSnapshot`)**: Lojas (`stores`), produtos do cardápio iFood (`products`) e avaliações (`reviews`) públicos são sincronizados em tempo real para todos os visitantes da URL na Vercel.
+   - **Hidratação Automática (`POST /api/sync`) + Endpoints Idempotentes**: Caso uma instância serverless da Vercel sofra *cold start*, o cliente reidrata automaticamente o estado e todas as rotas `PATCH`/`DELETE` realizam *upsert* transparente.
+   - **Cache Local (`localStorage`)**: Garante funcionamento imediato mesmo antes do login com Google.
+
+### Como publicar na Vercel:
+```bash
+# Opção 1: Conecte seu repositório GitHub diretamente no painel da Vercel
+# Framework Preset: Vite | Build Command: npm run build | Output Directory: dist
+
+# Opção 2: Via Vercel CLI
+npx vercel --prod
+```
+> **Importante para Login com Google na Vercel**: Após gerar seu domínio `.vercel.app`, adicione-o em **Firebase Console → Authentication → Settings → Authorized domains** para habilitar o popup de login do Google em produção.
+
+---
+
 ## Testes Automatizados e Qualidade de Código
 
 A lógica pura de negócios (cálculo geoespacial Haversine, ETA de entrega, totais de sacola, descontos de cupom e níveis de fidelidade) é desacoplada em `src/utils/commerceLogic.ts` e testada via `node:test`:

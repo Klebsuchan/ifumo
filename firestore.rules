@@ -308,7 +308,13 @@ service cloud.firestore {
         incoming().updatedAt == request.time && (
           isAdmin() ||
           (
-            existing().userId == request.auth.uid &&
+            (
+              existing().userId == request.auth.uid ||
+              (
+                exists(/databases/$(database)/documents/stores/$(existing().storeId)) &&
+                get(/databases/$(database)/documents/stores/$(existing().storeId)).data.ownerId == request.auth.uid
+              )
+            ) &&
             !(existing().status in ['delivered', 'cancelled']) &&
             incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
           )

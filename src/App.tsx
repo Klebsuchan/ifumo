@@ -210,8 +210,30 @@ export default function App() {
   const [profileSavedFeedback, setProfileSavedFeedback] = useState<string>('');
 
   // Catalog, Stores & Filters (Strictly Platform-Registered Establishments & Products)
-  const [stores, setStores] = useState<PartnerStore[]>(PARTNER_STORES);
-  const [products, setProducts] = useState<ProductItem[]>(INITIAL_PRODUCTS);
+  const [stores, setStores] = useState<PartnerStore[]>(() => {
+    try {
+      const raw = localStorage.getItem('ifumo_stores_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback to empty
+    }
+    return PARTNER_STORES;
+  });
+  const [products, setProducts] = useState<ProductItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('ifumo_products_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback to empty
+    }
+    return INITIAL_PRODUCTS;
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [selectedStoreFilter, setSelectedStoreFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -257,11 +279,42 @@ export default function App() {
   const [checkoutError, setCheckoutError] = useState<string>('');
 
   // Orders, Reviews, Support & Real-Time Push Notifications
-  const [orders, setOrders] = useState<OrderRecord[]>(INITIAL_ORDERS);
-  const [reviews, setReviews] = useState<StoreReview[]>(INITIAL_REVIEWS);
-  const [supportMessages, setSupportMessages] = useState<SupportChatMessage[]>(
-    INITIAL_SUPPORT_MESSAGES
-  );
+  const [orders, setOrders] = useState<OrderRecord[]>(() => {
+    try {
+      const raw = localStorage.getItem('ifumo_orders_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback to empty
+    }
+    return INITIAL_ORDERS;
+  });
+  const [reviews, setReviews] = useState<StoreReview[]>(() => {
+    try {
+      const raw = localStorage.getItem('ifumo_reviews_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback to empty
+    }
+    return INITIAL_REVIEWS;
+  });
+  const [supportMessages, setSupportMessages] = useState<SupportChatMessage[]>(() => {
+    try {
+      const raw = localStorage.getItem('ifumo_support_v2');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {
+      // Fallback to empty
+    }
+    return INITIAL_SUPPORT_MESSAGES;
+  });
   const [liveNotifications, setLiveNotifications] = useState<PushNotificationToast[]>([]);
   const [isPlaceModalOpen, setIsPlaceModalOpen] = useState<boolean>(false);
 
@@ -312,7 +365,48 @@ export default function App() {
     }
   }, [cartQuantities]);
 
-  // Hydrate Real Persisted State from Backend (/api/state) + Subscribe to Real-Time SSE (/api/events)
+  // Persist stores, products, orders, reviews & supportMessages in localStorage for Vercel resilience
+  useEffect(() => {
+    try {
+      localStorage.setItem('ifumo_stores_v2', JSON.stringify(stores));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [stores]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ifumo_products_v2', JSON.stringify(products));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [products]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ifumo_orders_v2', JSON.stringify(orders));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [orders]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ifumo_reviews_v2', JSON.stringify(reviews));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [reviews]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('ifumo_support_v2', JSON.stringify(supportMessages));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [supportMessages]);
+
+  // Hydrate Real Persisted State from Backend (/api/state) + Sync Serverless State + Subscribe to Real-Time SSE (/api/events)
   useEffect(() => {
     let isMounted = true;
 
@@ -321,22 +415,53 @@ export default function App() {
         const res = await fetch('/api/state');
         if (!res.ok || !isMounted) return;
         const data = await res.json();
-        if (Array.isArray(data.stores)) {
-          setStores(data.stores);
+
+        if (Array.isArray(data.stores) && data.stores.length > 0) {
+          setStores((prev) => {
+            const merged = new Map(prev.map((s) => [s.id, s]));
+            for (const s of data.stores) {
+              merged.set(s.id, s);
+            }
+            return Array.from(merged.values());
+          });
         }
-        if (Array.isArray(data.products)) {
-          setProducts(data.products);
+        if (Array.isArray(data.products) && data.products.length > 0) {
+          setProducts((prev) => {
+            const merged = new Map(prev.map((p) => [p.id, p]));
+            for (const p of data.products) {
+              merged.set(p.id, p);
+            }
+            return Array.from(merged.values());
+          });
         }
-        if (Array.isArray(data.orders)) {
-          setOrders(data.orders);
+        if (Array.isArray(data.orders) && data.orders.length > 0) {
+          setOrders((prev) => {
+            const merged = new Map(prev.map((o) => [o.orderId, o]));
+            for (const o of data.orders) {
+              merged.set(o.orderId, o);
+            }
+            return Array.from(merged.values());
+          });
         }
-        if (Array.isArray(data.reviews)) {
-          setReviews(data.reviews);
+        if (Array.isArray(data.reviews) && data.reviews.length > 0) {
+          setReviews((prev) => {
+            const merged = new Map(prev.map((r) => [r.reviewId, r]));
+            for (const r of data.reviews) {
+              merged.set(r.reviewId, r);
+            }
+            return Array.from(merged.values());
+          });
         }
-        if (Array.isArray(data.supportMessages)) {
-          setSupportMessages(data.supportMessages);
+        if (Array.isArray(data.supportMessages) && data.supportMessages.length > 0) {
+          setSupportMessages((prev) => {
+            const merged = new Map(prev.map((m) => [m.messageId, m]));
+            for (const m of data.supportMessages) {
+              merged.set(m.messageId, m);
+            }
+            return Array.from(merged.values());
+          });
         }
-        if (Array.isArray(data.notifications)) {
+        if (Array.isArray(data.notifications) && data.notifications.length > 0) {
           setLiveNotifications(data.notifications);
         }
         const activeUid = auth.currentUser?.uid || 'demo_user_1';
@@ -349,6 +474,29 @@ export default function App() {
           }
           if (saved.phone) setUserPhone(saved.phone);
           if (typeof saved.loyaltyPoints === 'number') setLoyaltyPoints(saved.loyaltyPoints);
+        }
+
+        // Hydrate serverless container if client has persisted stores/products after a Vercel cold start
+        try {
+          const localStores = JSON.parse(localStorage.getItem('ifumo_stores_v2') || '[]');
+          const localProducts = JSON.parse(localStorage.getItem('ifumo_products_v2') || '[]');
+          const localOrders = JSON.parse(localStorage.getItem('ifumo_orders_v2') || '[]');
+          if (
+            (localStores.length > 0 && (!data.stores || data.stores.length === 0)) ||
+            (localProducts.length > 0 && (!data.products || data.products.length === 0))
+          ) {
+            await fetch('/api/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                stores: localStores,
+                products: localProducts,
+                orders: localOrders,
+              }),
+            });
+          }
+        } catch {
+          // Ignore sync notice
         }
       } catch {
         // Offline fallback uses local cache
@@ -618,7 +766,151 @@ export default function App() {
     }
   }, [activeSection]);
 
-  // Firestore Real-Time Listeners (when authenticated)
+  // Public Firestore Real-Time Listeners (Active for all visitors on Vercel & Local)
+  useEffect(() => {
+    if (!authReady) return;
+
+    const reviewsQuery = query(
+      collection(db, 'reviews'),
+      where('visibility', '==', 'public')
+    );
+    const unsubReviews = onSnapshot(
+      reviewsQuery,
+      (snap) => {
+        if (!snap.empty) {
+          const remoteReviews: StoreReview[] = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              reviewId: data.reviewId,
+              userId: data.userId,
+              authorName: data.authorName,
+              storeId: data.storeId,
+              storeName: data.storeName,
+              rating: data.rating,
+              comment: data.comment,
+              createdAt: 'Verificado',
+            };
+          });
+          setReviews((prev) => {
+            const existingIds = new Set(remoteReviews.map((r) => r.reviewId));
+            return [...remoteReviews, ...prev.filter((p) => !existingIds.has(p.reviewId))];
+          });
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'reviews');
+      }
+    );
+
+    const storesQuery = query(
+      collection(db, 'stores'),
+      where('visibility', '==', 'public')
+    );
+    const unsubStores = onSnapshot(
+      storesQuery,
+      (snap) => {
+        const removedIds = new Set(
+          snap
+            .docChanges()
+            .filter((c) => c.type === 'removed')
+            .map((c) => c.doc.data().id || c.doc.id)
+        );
+        const remoteStores: PartnerStore[] = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: data.id || data.storeId || d.id,
+            name: data.name,
+            neighborhood: data.neighborhood,
+            address: data.address,
+            lat: Number(data.lat) || -23.5649,
+            lng: Number(data.lng) || -46.652,
+            rating: typeof data.rating === 'number' ? data.rating : 5.0,
+            reviewCount: typeof data.reviewCount === 'number' ? data.reviewCount : 1,
+            reviewCountFormatted: data.reviewCountFormatted || 'Novo',
+            prepMinutes: Number(data.prepMinutes) || 12,
+            etaRangeLabel: data.etaRangeLabel || '20-30 min',
+            deliveryLabel: data.deliveryLabel || 'Grátis',
+            specialty: data.specialty || 'Cigarros, Sedas, Isqueiros & Tabacaria',
+            isOpen: data.isOpen !== false,
+            spriteViewBox: data.spriteViewBox || '54 786 196 150',
+            ownerId: data.ownerId,
+          };
+        });
+        if (remoteStores.length > 0 || removedIds.size > 0) {
+          setStores((prev) => {
+            const existingMap = new Map(
+              prev.filter((s) => !removedIds.has(s.id)).map((s) => [s.id, s])
+            );
+            for (const rs of remoteStores) {
+              existingMap.set(rs.id, rs);
+            }
+            return Array.from(existingMap.values());
+          });
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'stores');
+      }
+    );
+
+    const productsQuery = query(
+      collection(db, 'products'),
+      where('visibility', '==', 'public')
+    );
+    const unsubProducts = onSnapshot(
+      productsQuery,
+      (snap) => {
+        const removedIds = new Set(
+          snap
+            .docChanges()
+            .filter((c) => c.type === 'removed')
+            .map((c) => c.doc.data().id || c.doc.id)
+        );
+        const remoteProducts: ProductItem[] = snap.docs.map((d) => {
+          const data = d.data();
+          return {
+            id: data.id || d.id,
+            storeId: data.storeId,
+            storeName: data.storeName,
+            name: data.name,
+            category: data.category || 'Cigarros',
+            tagLabel: data.tagLabel || 'PRONTA ENTREGA',
+            description: data.description || '',
+            origin: data.origin || 'Original Lacrado',
+            intensity: data.intensity || 'Pronta Entrega',
+            rating: typeof data.rating === 'number' ? data.rating : 5.0,
+            reviewsCountLabel: data.reviewsCountLabel || '5.0 (Verificado)',
+            price: Number(data.price) || 14.5,
+            image:
+              data.image || '/src/assets/images/cig_marlboro_pack_1794927241031.jpg',
+            inStock: data.inStock !== false,
+          };
+        });
+        if (remoteProducts.length > 0 || removedIds.size > 0) {
+          setProducts((prev) => {
+            const existingMap = new Map(
+              prev.filter((p) => !removedIds.has(p.id)).map((p) => [p.id, p])
+            );
+            for (const rp of remoteProducts) {
+              existingMap.set(rp.id, rp);
+            }
+            return Array.from(existingMap.values());
+          });
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'products');
+      }
+    );
+
+    return () => {
+      unsubReviews();
+      unsubStores();
+      unsubProducts();
+    };
+  }, [authReady]);
+
+  // Authenticated User Firestore Listeners (Orders)
   useEffect(() => {
     if (!authReady || !currentUser) return;
 
@@ -660,128 +952,8 @@ export default function App() {
       }
     );
 
-    const reviewsQuery = query(
-      collection(db, 'reviews'),
-      where('visibility', '==', 'public')
-    );
-    const unsubReviews = onSnapshot(
-      reviewsQuery,
-      (snap) => {
-        if (!snap.empty) {
-          const remoteReviews: StoreReview[] = snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              reviewId: data.reviewId,
-              userId: data.userId,
-              authorName: data.authorName,
-              storeId: data.storeId,
-              storeName: data.storeName,
-              rating: data.rating,
-              comment: data.comment,
-              createdAt: 'Verificado',
-            };
-          });
-          setReviews((prev) => {
-            const existingIds = new Set(remoteReviews.map((r) => r.reviewId));
-            return [...remoteReviews, ...prev.filter((p) => !existingIds.has(p.reviewId))];
-          });
-        }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'reviews');
-      }
-    );
-
-    const storesQuery = query(
-      collection(db, 'stores'),
-      where('visibility', '==', 'public')
-    );
-    const unsubStores = onSnapshot(
-      storesQuery,
-      (snap) => {
-        if (!snap.empty) {
-          const remoteStores: PartnerStore[] = snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: data.storeId || d.id,
-              name: data.name,
-              neighborhood: data.neighborhood,
-              address: data.address,
-              lat: Number(data.lat) || -23.5649,
-              lng: Number(data.lng) || -46.652,
-              rating: typeof data.rating === 'number' ? data.rating : 5.0,
-              reviewCount: typeof data.reviewCount === 'number' ? data.reviewCount : 1,
-              reviewCountFormatted: data.reviewCountFormatted || 'Novo',
-              prepMinutes: Number(data.prepMinutes) || 12,
-              etaRangeLabel: data.etaRangeLabel || '20-30 min',
-              deliveryLabel: data.deliveryLabel || 'Grátis',
-              specialty: data.specialty || 'Cigarros, Sedas, Isqueiros & Tabacaria',
-              isOpen: data.isOpen !== false,
-              spriteViewBox: data.spriteViewBox || '54 786 196 150',
-              ownerId: data.ownerId,
-            };
-          });
-          setStores((prev) => {
-            const existingMap = new Map(prev.map((s) => [s.id, s]));
-            for (const rs of remoteStores) {
-              existingMap.set(rs.id, rs);
-            }
-            return Array.from(existingMap.values());
-          });
-        }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'stores');
-      }
-    );
-
-    const productsQuery = query(
-      collection(db, 'products'),
-      where('visibility', '==', 'public')
-    );
-    const unsubProducts = onSnapshot(
-      productsQuery,
-      (snap) => {
-        if (!snap.empty) {
-          const remoteProducts: ProductItem[] = snap.docs.map((d) => {
-            const data = d.data();
-            return {
-              id: data.id || d.id,
-              storeId: data.storeId,
-              storeName: data.storeName,
-              name: data.name,
-              category: data.category || 'Cigarros',
-              tagLabel: data.tagLabel || 'PRONTA ENTREGA',
-              description: data.description || '',
-              origin: data.origin || 'Original Lacrado',
-              intensity: data.intensity || 'Pronta Entrega',
-              rating: typeof data.rating === 'number' ? data.rating : 5.0,
-              reviewsCountLabel: data.reviewsCountLabel || '5.0 (Verificado)',
-              price: Number(data.price) || 14.5,
-              image:
-                data.image || '/src/assets/images/cig_marlboro_pack_1794927241031.jpg',
-              inStock: data.inStock !== false,
-            };
-          });
-          setProducts((prev) => {
-            const existingMap = new Map(prev.map((p) => [p.id, p]));
-            for (const rp of remoteProducts) {
-              existingMap.set(rp.id, rp);
-            }
-            return Array.from(existingMap.values());
-          });
-        }
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'products');
-      }
-    );
-
     return () => {
       unsubOrders();
-      unsubReviews();
-      unsubStores();
-      unsubProducts();
     };
   }, [authReady, currentUser]);
 
@@ -1284,6 +1456,7 @@ export default function App() {
   };
 
   const handleAdvanceOrderStatus = async (orderId: string, nextStatus: OrderStatus) => {
+    const targetOrder = orders.find((o) => o.orderId === orderId);
     setOrders((prev) =>
       prev.map((o) => (o.orderId === orderId ? { ...o, status: nextStatus } : o))
     );
@@ -1293,15 +1466,14 @@ export default function App() {
         await fetch(`/api/orders/${orderId}/status`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: nextStatus }),
+          body: JSON.stringify({ status: nextStatus, order: targetOrder }),
         });
       } catch {
         // Fallback to local state if offline
       }
     }
 
-    const targetOrder = orders.find((o) => o.orderId === orderId);
-    if (currentUser && targetOrder && targetOrder.userId === currentUser.uid && !simulatedOffline) {
+    if (currentUser && targetOrder && !simulatedOffline) {
       try {
         await updateDoc(doc(db, 'orders', orderId), {
           status: nextStatus,
@@ -1437,7 +1609,7 @@ export default function App() {
         await fetch(`/api/products/${productId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ inStock: nextInStock }),
+          body: JSON.stringify({ inStock: nextInStock, product: target }),
         });
       } catch {
         // Offline fallback
@@ -1457,6 +1629,7 @@ export default function App() {
   };
 
   const handleUpdateProductPrice = async (productId: string, newPrice: number) => {
+    const target = products.find((p) => p.id === productId);
     setProducts((prev) =>
       prev.map((p) => (p.id === productId ? { ...p, price: newPrice } : p))
     );
@@ -1465,7 +1638,7 @@ export default function App() {
         await fetch(`/api/products/${productId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ price: newPrice }),
+          body: JSON.stringify({ price: newPrice, product: target }),
         });
       } catch {
         // Ignore
@@ -1691,54 +1864,79 @@ export default function App() {
   };
 
   const handleRegisterPlace = async (payload: PlaceRegistrationPayload) => {
-    const res = await fetch('/api/stores', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...payload,
-        ownerId: currentUser?.uid || 'guest_partner',
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || 'Não foi possível cadastrar o lugar.');
+    const fallbackStoreId = `place_${Date.now().toString(36)}`;
+    let createdStore: PartnerStore | null = null;
+
+    if (!simulatedOffline) {
+      try {
+        const res = await fetch('/api/stores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...payload,
+            id: fallbackStoreId,
+            ownerId: currentUser?.uid || 'guest_partner',
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.store) {
+            createdStore = data.store;
+          }
+        }
+      } catch {
+        // Fallback to local/Firestore creation below
+      }
     }
 
-    const createdStore: PartnerStore = data.store;
+    const finalStore: PartnerStore = createdStore || {
+      id: fallbackStoreId,
+      ownerId: currentUser?.uid || 'guest_partner',
+      name: payload.name.trim().slice(0, 80),
+      neighborhood: (payload.neighborhood || 'Centro').trim().slice(0, 80),
+      address: payload.address.trim().slice(0, 240),
+      lat: Number(payload.lat) || -23.5649,
+      lng: Number(payload.lng) || -46.652,
+      rating: 5.0,
+      reviewCount: 1,
+      reviewCountFormatted: 'Novo',
+      prepMinutes: 10,
+      etaRangeLabel: (payload.etaRangeLabel || '20-30 min').slice(0, 30),
+      deliveryLabel: (payload.deliveryLabel || 'Grátis').slice(0, 30),
+      specialty: (
+        payload.specialty ||
+        'Marlboro, Camel, Kretek, Harmony, Charutos, Sedas & Isqueiros'
+      ).slice(0, 200),
+      isOpen: payload.isOpen !== false,
+      spriteViewBox: '54 824 164 124',
+    };
+
     setStores((prev) => {
-      if (prev.some((s) => s.id === createdStore.id)) return prev;
-      return [createdStore, ...prev];
+      if (prev.some((s) => s.id === finalStore.id)) return prev;
+      return [finalStore, ...prev];
     });
 
-    if (Array.isArray(data.seededProducts) && data.seededProducts.length > 0) {
-      setProducts((prev) => {
-        const existingIds = new Set(prev.map((p) => p.id));
-        const added = data.seededProducts.filter((p: ProductItem) => !existingIds.has(p.id));
-        return [...added, ...prev];
-      });
-    }
-
-    setSelectedMapStoreId(createdStore.id);
+    setSelectedMapStoreId(finalStore.id);
 
     if (currentUser && !simulatedOffline) {
       try {
-        await setDoc(doc(db, 'stores', createdStore.id), {
-          id: createdStore.id,
+        await setDoc(doc(db, 'stores', finalStore.id), {
+          id: finalStore.id,
           ownerId: currentUser.uid,
-          name: createdStore.name.slice(0, 80),
-          neighborhood: createdStore.neighborhood.slice(0, 80),
-          address: createdStore.address.slice(0, 240),
-          lat: createdStore.lat,
-          lng: createdStore.lng,
-          rating: createdStore.rating,
-          reviewCount: createdStore.reviewCount || 1,
-          reviewCountFormatted: createdStore.reviewCountFormatted.slice(0, 20),
-          prepMinutes: createdStore.prepMinutes,
-          etaRangeLabel: createdStore.etaRangeLabel.slice(0, 30),
-          deliveryLabel: createdStore.deliveryLabel.slice(0, 30),
-          specialty: createdStore.specialty.slice(0, 200),
-          isOpen: createdStore.isOpen,
-          spriteViewBox: createdStore.spriteViewBox.slice(0, 40),
+          name: finalStore.name.slice(0, 80),
+          neighborhood: finalStore.neighborhood.slice(0, 80),
+          address: finalStore.address.slice(0, 240),
+          lat: finalStore.lat,
+          lng: finalStore.lng,
+          rating: finalStore.rating,
+          reviewCount: finalStore.reviewCount || 1,
+          reviewCountFormatted: finalStore.reviewCountFormatted.slice(0, 20),
+          prepMinutes: finalStore.prepMinutes,
+          etaRangeLabel: finalStore.etaRangeLabel.slice(0, 30),
+          deliveryLabel: finalStore.deliveryLabel.slice(0, 30),
+          specialty: finalStore.specialty.slice(0, 200),
+          isOpen: finalStore.isOpen,
+          spriteViewBox: finalStore.spriteViewBox.slice(0, 40),
           visibility: 'public',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -1750,11 +1948,12 @@ export default function App() {
 
     pushToast(
       'Novo Lugar Cadastrado!',
-      `${createdStore.name} (${createdStore.neighborhood}) agora está ativo no mapa e na lista.`
+      `${finalStore.name} (${finalStore.neighborhood}) agora está ativo no mapa e na lista.`
     );
   };
 
   const handleToggleStoreOpen = async (storeId: string, nextIsOpen: boolean) => {
+    const target = stores.find((s) => s.id === storeId);
     setStores((prev) =>
       prev.map((s) => (s.id === storeId ? { ...s, isOpen: nextIsOpen } : s))
     );
@@ -1762,16 +1961,18 @@ export default function App() {
       await fetch(`/api/stores/${storeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isOpen: nextIsOpen }),
+        body: JSON.stringify({ isOpen: nextIsOpen, store: target }),
       });
     } catch {
       // Ignore network error
     }
     if (currentUser && !simulatedOffline) {
       try {
-        const target = stores.find((s) => s.id === storeId);
         if (target && target.ownerId === currentUser.uid) {
-          await updateDoc(doc(db, 'stores', storeId), { isOpen: nextIsOpen });
+          await updateDoc(doc(db, 'stores', storeId), {
+            isOpen: nextIsOpen,
+            updatedAt: serverTimestamp(),
+          });
         }
       } catch {
         // Ignore if not owner or doc not in Firestore
