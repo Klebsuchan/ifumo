@@ -1,0 +1,592 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Perfil de usuário do iFumo com dados de entrega salvos e saldo de pontos do programa de fidelidade.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID do cliente",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Nome de exibição do usuário",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "defaultAddress": {
+          "type": "string",
+          "description": "Endereço padrão de entrega salvo pelo usuário",
+          "minLength": 3,
+          "maxLength": 240
+        },
+        "phone": {
+          "type": "string",
+          "description": "Telefone ou WhatsApp de contato para entrega (+18)",
+          "minLength": 3,
+          "maxLength": 30
+        },
+        "loyaltyPoints": {
+          "type": "number",
+          "description": "Saldo de pontos acumulados no Clube iFumo"
+        },
+        "tier": {
+          "type": "string",
+          "description": "Nível atual de fidelidade",
+          "enum": ["Bronze", "Prata", "Ouro", "Reserva Black"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "role": {
+          "type": "string",
+          "description": "Papel do usuário na plataforma",
+          "enum": ["customer", "partner", "admin"],
+          "minLength": 5,
+          "maxLength": 16
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp da última atualização"
+        }
+      },
+      "required": ["uid", "displayName", "defaultAddress", "phone", "loyaltyPoints", "tier", "role", "createdAt", "updatedAt"]
+    },
+    "StorePlace": {
+      "title": "StorePlace",
+      "description": "Lugar / Tabacaria / Estabelecimento cadastrado na plataforma iFumo com coordenadas GPS reais.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID único do lugar ou tabacaria",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID do usuário que cadastrou o lugar",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Nome do lugar ou tabacaria",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "neighborhood": {
+          "type": "string",
+          "description": "Bairro ou região do estabelecimento",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "address": {
+          "type": "string",
+          "description": "Endereço completo do estabelecimento",
+          "minLength": 5,
+          "maxLength": 240
+        },
+        "lat": {
+          "type": "number",
+          "description": "Latitude GPS real"
+        },
+        "lng": {
+          "type": "number",
+          "description": "Longitude GPS real"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Avaliação média (1 a 5)"
+        },
+        "reviewCount": {
+          "type": "number",
+          "description": "Total de avaliações verificadas"
+        },
+        "reviewCountFormatted": {
+          "type": "string",
+          "description": "Contagem formatada de avaliações",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "prepMinutes": {
+          "type": "number",
+          "description": "Tempo médio de preparo em minutos"
+        },
+        "etaRangeLabel": {
+          "type": "string",
+          "description": "Faixa de tempo de entrega (ex: 20-30 min)",
+          "minLength": 2,
+          "maxLength": 30
+        },
+        "deliveryLabel": {
+          "type": "string",
+          "description": "Taxa de entrega (ex: Grátis)",
+          "minLength": 2,
+          "maxLength": 30
+        },
+        "specialty": {
+          "type": "string",
+          "description": "Especialidade e marcas disponíveis no local",
+          "minLength": 2,
+          "maxLength": 200
+        },
+        "isOpen": {
+          "type": "boolean",
+          "description": "Indica se o estabelecimento está aberto agora"
+        },
+        "spriteViewBox": {
+          "type": "string",
+          "description": "Coordenadas de ícone/miniatura visual",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibilidade pública no mapa e catálogo",
+          "enum": ["public"],
+          "minLength": 6,
+          "maxLength": 10
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de cadastro"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de atualização"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "neighborhood",
+        "address",
+        "lat",
+        "lng",
+        "rating",
+        "reviewCount",
+        "reviewCountFormatted",
+        "prepMinutes",
+        "etaRangeLabel",
+        "deliveryLabel",
+        "specialty",
+        "isOpen",
+        "spriteViewBox",
+        "visibility",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Pedido real realizado por cliente em uma tabacaria com pagamento na entrega.",
+      "type": "object",
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "description": "Identificador único do pedido",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID do cliente que realizou o pedido",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "description": "Nome do cliente para entrega",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "storeId": {
+          "type": "string",
+          "description": "ID da tabacaria parceira",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Nome da tabacaria parceira",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "itemsSummary": {
+          "type": "string",
+          "description": "Resumo textual dos itens do pedido",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Valor total em BRL"
+        },
+        "deliveryFee": {
+          "type": "number",
+          "description": "Taxa de entrega em BRL"
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Método de pagamento na entrega (Pix, Dinheiro, Cartão de Crédito ou Débito)",
+          "enum": [
+            "pix_entrega",
+            "dinheiro_entrega",
+            "cartao_credito_entrega",
+            "cartao_debito_entrega",
+            "stripe_card",
+            "pix",
+            "apple_pay"
+          ],
+          "minLength": 3,
+          "maxLength": 32
+        },
+        "stripeTxId": {
+          "type": "string",
+          "description": "Protocolo do pedido e modalidade/troco na entrega",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "deliveryAddress": {
+          "type": "string",
+          "description": "Endereço de entrega do pedido",
+          "minLength": 5,
+          "maxLength": 240
+        },
+        "status": {
+          "type": "string",
+          "description": "Status em tempo real da entrega",
+          "enum": ["confirmed", "preparing", "delivering", "delivered", "cancelled"],
+          "minLength": 7,
+          "maxLength": 20
+        },
+        "loyaltyEarned": {
+          "type": "number",
+          "description": "Pontos de fidelidade ganhos neste pedido"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de atualização"
+        }
+      },
+      "required": [
+        "orderId",
+        "userId",
+        "customerName",
+        "storeId",
+        "storeName",
+        "itemsSummary",
+        "totalAmount",
+        "deliveryFee",
+        "paymentMethod",
+        "stripeTxId",
+        "deliveryAddress",
+        "status",
+        "loyaltyEarned",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Avaliação real deixada por um cliente para um lugar/tabacaria.",
+      "type": "object",
+      "properties": {
+        "reviewId": {
+          "type": "string",
+          "description": "ID único da avaliação",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID do autor da avaliação",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Nome do autor da avaliação",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "storeId": {
+          "type": "string",
+          "description": "ID da tabacaria avaliada",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Nome da tabacaria avaliada",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "rating": {
+          "type": "number",
+          "description": "Nota de 1 a 5 estrelas"
+        },
+        "comment": {
+          "type": "string",
+          "description": "Comentário sobre a experiência e entrega",
+          "minLength": 3,
+          "maxLength": 600
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibilidade da avaliação",
+          "enum": ["public"],
+          "minLength": 6,
+          "maxLength": 10
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação"
+        }
+      },
+      "required": [
+        "reviewId",
+        "userId",
+        "authorName",
+        "storeId",
+        "storeName",
+        "rating",
+        "comment",
+        "visibility",
+        "createdAt"
+      ]
+    },
+    "SupportMessage": {
+      "title": "SupportMessage",
+      "description": "Mensagem do chat interno de suporte ao cliente e tabacarias parceiras.",
+      "type": "object",
+      "properties": {
+        "messageId": {
+          "type": "string",
+          "description": "ID único da mensagem",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID do usuário titular do chamado",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Nome do remetente",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "senderRole": {
+          "type": "string",
+          "description": "Papel do remetente (customer ou support)",
+          "enum": ["customer", "support"],
+          "minLength": 7,
+          "maxLength": 16
+        },
+        "text": {
+          "type": "string",
+          "description": "Conteúdo da mensagem de suporte",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de envio"
+        }
+      },
+      "required": ["messageId", "userId", "senderName", "senderRole", "text", "createdAt"]
+    },
+    "ProductCatalogItem": {
+      "title": "ProductCatalogItem",
+      "description": "Produto cadastrado no cardápio de um estabelecimento registrado na plataforma iFumo.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "ID único do produto cadastrado",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID do proprietário do estabelecimento",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "description": "ID do estabelecimento cadastrado",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "description": "Nome do estabelecimento cadastrado",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "name": {
+          "type": "string",
+          "description": "Nome do produto (ex: Marlboro Red Maço 20 un.)",
+          "minLength": 2,
+          "maxLength": 90
+        },
+        "category": {
+          "type": "string",
+          "description": "Categoria do cardápio",
+          "enum": ["Cigarros", "Tabaco", "Charutos", "Seda", "Isqueiros", "Vape"],
+          "minLength": 4,
+          "maxLength": 20
+        },
+        "tagLabel": {
+          "type": "string",
+          "description": "Selo de destaque no cardápio",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "description": {
+          "type": "string",
+          "description": "Descrição do produto no cardápio",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "origin": {
+          "type": "string",
+          "description": "Origem ou especificação do maço/unidade",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "intensity": {
+          "type": "string",
+          "description": "Perfil ou disponibilidade do item",
+          "minLength": 2,
+          "maxLength": 40
+        },
+        "rating": {
+          "type": "number",
+          "description": "Avaliação média (1 a 5)"
+        },
+        "reviewsCountLabel": {
+          "type": "string",
+          "description": "Rótulo de avaliações",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "price": {
+          "type": "number",
+          "description": "Preço unitário em BRL"
+        },
+        "image": {
+          "type": "string",
+          "description": "Caminho ou URL da imagem do produto",
+          "minLength": 5,
+          "maxLength": 300
+        },
+        "inStock": {
+          "type": "boolean",
+          "description": "Status ativo/disponível no cardápio iFood"
+        },
+        "visibility": {
+          "type": "string",
+          "description": "Visibilidade pública no catálogo",
+          "enum": ["public"],
+          "minLength": 6,
+          "maxLength": 10
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de criação"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp de atualização"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "storeId",
+        "storeName",
+        "name",
+        "category",
+        "tagLabel",
+        "description",
+        "origin",
+        "intensity",
+        "rating",
+        "reviewsCountLabel",
+        "price",
+        "image",
+        "inStock",
+        "visibility",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Perfis de usuários e saldo de fidelidade (isolados por titular ou admin)."
+    },
+    "/stores/{storeId}": {
+      "schema": { "$ref": "#/entities/StorePlace" },
+      "description": "Lugares e tabacarias cadastrados pelos usuários e parceiros."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/ProductCatalogItem" },
+      "description": "Produtos cadastrados no cardápio pelos estabelecimentos registrados."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Pedidos de clientes nas tabacarias parceiras com rastreamento em tempo real."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Avaliações públicas verificadas dos estabelecimentos."
+    },
+    "/supportMessages/{messageId}": {
+      "schema": { "$ref": "#/entities/SupportMessage" },
+      "description": "Mensagens do chat interno de suporte ao cliente."
+    }
+  }
+}
